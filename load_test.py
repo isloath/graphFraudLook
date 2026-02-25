@@ -374,14 +374,35 @@ print("\n── Louvain clustering (MAGE) ────────────�
 #   "Memory limit exceeded! Attempting to allocate 4 GiB…"
 # because it builds two full in-memory copies (Cypher collect() + MAGE copy).
 # community_detection.get streams directly from the graph — O(1) extra RAM.
+#
+# Actual MAGE signature (confirmed by error probing):
+#   community_detection.get(
+#       weight_property  STRING   pos 0  — "" disables weighting
+#       directed         BOOL     pos 1
+#       min_graph_shrink INTEGER  pos 2  — keep iterating while coarsened
+#                                         graph > this size; 100 works well
+#                                         for our ~19k node graph
+#       [community_alg   STRING   pos 3  default "louvain"]
+#       [leiden_resolution FLOAT  pos 4  default 0.35]
+#   )
 try:
+    # Print live signature so future errors are self-diagnosing.
+    try:
+        sig_rows = client.execute_raw(
+            "CALL mg.procedures() YIELD name, signature "
+            "WHERE name = 'community_detection.get' RETURN signature",
+            {},
+        )
+        print(f"  MAGE signature: {sig_rows[0]['signature'] if sig_rows else 'not found'}")
+    except Exception as _se:
+        print(f"  (could not read signature: {_se})")
+
     client.execute_raw(
-        # Signature: community_detection.get(weight_property STRING,
-        #                                     directed BOOL, weighted BOOL)
-        # weight_property is position 0 — must be STRING, not bool.
-        # No node_label/rel_type filter args in this MAGE version.
+        # pos 0: weight property name (non-empty → weighted)
+        # pos 1: directed = false (LINKED is undirected for community detection)
+        # pos 2: min_graph_shrink = 100  → iterate until coarsened graph ≤ 100 nodes
         """
-        CALL community_detection.get("weight", false, true)
+        CALL community_detection.get("weight", false, 100)
         YIELD node, community_id
         SET node.cluster_id = community_id
         """,
