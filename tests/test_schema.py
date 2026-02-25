@@ -29,8 +29,8 @@ except ImportError:
 # ── paths & constants ─────────────────────────────────────────────────────────
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_FILE = ROOT / "schema.cypher"
-TRIGGERS_FILE = ROOT / "triggers.cypher"
+SCHEMA_FILE   = ROOT / "schema.cypher"
+TRIGGERS_FILE = ROOT / "schema" / "triggers.cypher"
 
 INDEXED_PROPS = [
     "id", "phone", "email", "document", "ip",
@@ -253,14 +253,17 @@ def test_linked_edge_created(mg_driver):
         ).single()
 
     assert rec is not None, "Trigger did not create LINKED edge"
-    assert rec["weight"] == 1
+    assert rec["weight"] == 3, f"phone match → weight=3, got {rec['weight']}"
     assert "phone" in rec["shared_attrs"]
 
 
 # ── 5. LINKED weight calculation ─────────────────────────────────────────────
 
 def test_linked_weight_correct(mg_driver):
-    """Weight must equal the exact number of shared attributes."""
+    """Weight must equal the sum of per-attribute weights for shared attributes.
+
+    Shared: phone (3) + email (2) + document (5) = 10.
+    """
     with mg_driver.session() as s:
         s.run(
             """
@@ -292,7 +295,8 @@ def test_linked_weight_correct(mg_driver):
         ).single()
 
     assert rec is not None, "LINKED edge not created"
-    assert rec["weight"] == 3
+    # phone(3) + email(2) + document(5) = 10
+    assert rec["weight"] == 10, f"phone+email+document → weight=10, got {rec['weight']}"
     assert set(rec["shared_attrs"]) == {"phone", "email", "document"}
 
 

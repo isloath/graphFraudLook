@@ -1,0 +1,32 @@
+# Attribute weights for LINKED edge scoring in the anti-fraud graph.
+#
+# Each weight reflects the strength of a fraud signal when two Applications
+# share that attribute:
+#
+#   5 — strong identity linkage: these attributes are typically unique to a
+#       person or account and sharing them is a near-certain fraud indicator.
+#
+#   3 — moderate signal: phone numbers are often shared within a fraud ring
+#       but can also be legitimately reused (prepaid SIMs, spoofed numbers).
+#
+#   2 — weak signal: email addresses are easy to create and can be reused
+#       innocently; useful in combination with stronger attributes.
+#
+#   1 — ambient signal: IP addresses and physical addresses can be shared by
+#       many unrelated people (NAT gateways, apartment buildings).
+#
+# These values are consumed by:
+#   • schema/triggers.cypher  — Cypher CASE WHEN weight expressions
+#   • src/graph_client.py     — Python-side weight validation (future)
+#
+# The sum of weights on a LINKED edge equals the weighted overlap score:
+#   Example: phone + document shared → weight = 3 + 5 = 8
+
+weights:
+  document:        5   # passport / national ID — strongest unique identifier
+  wallet:          5   # crypto wallet address — unique per account
+  payment_wallet:  5   # payout wallet — unique per account
+  phone:           3   # mobile number — moderate fraud signal
+  email:           2   # email address — weak, easy to fabricate
+  address:         1   # physical address — shared by residents / offices
+  ip:              1   # IP address — shared by NAT / VPN users

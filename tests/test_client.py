@@ -52,9 +52,9 @@ except ImportError:
 
 # ── paths ─────────────────────────────────────────────────────────────────────
 
-ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_FILE = ROOT / "schema.cypher"
-TRIGGERS_FILE = ROOT / "triggers.cypher"
+ROOT          = Path(__file__).resolve().parent.parent
+SCHEMA_FILE   = ROOT / "schema.cypher"
+TRIGGERS_FILE = ROOT / "schema" / "triggers.cypher"
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
