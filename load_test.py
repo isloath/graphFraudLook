@@ -376,9 +376,12 @@ print("\n── Louvain clustering (MAGE) ────────────�
 # community_detection.get streams directly from the graph — O(1) extra RAM.
 try:
     client.execute_raw(
+        # Signature: community_detection.get(weight_property STRING,
+        #                                     directed BOOL, weighted BOOL)
+        # weight_property is position 0 — must be STRING, not bool.
+        # No node_label/rel_type filter args in this MAGE version.
         """
-        CALL community_detection.get(false, true, "weight",
-                                     "Application", "LINKED")
+        CALL community_detection.get("weight", false, true)
         YIELD node, community_id
         SET node.cluster_id = community_id
         """,
