@@ -369,12 +369,16 @@ for row in hist:
 # ─────────────────────────────────────────────────────────────────────────────
 
 print("\n── Louvain clustering (MAGE) ────────────────────────────────────────────")
+# Use community_detection.get (streaming) instead of get_subgraph (materialises
+# ALL nodes+rels into RAM before calling MAGE).  get_subgraph causes:
+#   "Memory limit exceeded! Attempting to allocate 4 GiB…"
+# because it builds two full in-memory copies (Cypher collect() + MAGE copy).
+# community_detection.get streams directly from the graph — O(1) extra RAM.
 try:
     client.execute_raw(
         """
-        MATCH (n:Application)-[r:LINKED]-(m:Application)
-        WITH collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS rels
-        CALL community_detection.get_subgraph(nodes, rels, false, true, "weight")
+        CALL community_detection.get(false, true, "weight",
+                                     "Application", "LINKED")
         YIELD node, community_id
         SET node.cluster_id = community_id
         """,
