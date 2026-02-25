@@ -297,6 +297,62 @@ def test_get_application_context(client: FraudGraphClient, fraud_cluster: list[d
     assert isinstance(context["neighbors"], list)
 
 
+
+
+def test_calculate_cluster_closedness(client: FraudGraphClient, fraud_cluster: list[dict]):
+    closedness = client.calculate_cluster_closedness(77)
+    assert isinstance(closedness, float)
+    assert 0.0 <= closedness <= 1.0
+
+
+def test_get_cluster_stats(client: FraudGraphClient, fraud_cluster: list[dict]):
+    stats = client.get_cluster_stats(77)
+    assert stats
+    assert stats["cluster_id"] == 77
+    assert stats["size"] == 20
+    assert 0.0 <= stats["closedness"] <= 1.0
+    assert "avg_internal_weight" in stats
+    assert 0.0 <= stats["fraud_ratio"] <= 1.0
+    assert stats["oldest_app"] is not None
+    assert stats["newest_app"] is not None
+
+
+def test_get_all_cluster_stats(client: FraudGraphClient, fraud_cluster: list[dict]):
+    rows = list(client.get_all_cluster_stats(min_size=5))
+    assert rows
+    stats = rows[0]
+    assert stats["cluster_id"] == 77
+    assert stats["size"] >= 5
+
+
+def test_get_suspicious_clusters(client: FraudGraphClient, fraud_cluster: list[dict]):
+    rows = client.get_suspicious_clusters(closedness_threshold=0.0, min_size=10)
+    assert rows
+    assert rows[0]["cluster_id"] == 77
+
+
+def test_assign_new_application_to_cluster(client: FraudGraphClient, fraud_cluster: list[dict]):
+    client.add_application(
+        {
+            "id": "assign_me",
+            "created_at": "2025-05-01T00:00:00",
+            "phone": "+79990001111",  # shared with cluster 77
+            "email": "assign@test.local",
+            "document": "8888 111111",
+            "amount": 11000.0,
+            "status": "pending",
+        }
+    )
+
+    assigned = client.assign_new_application_to_cluster("assign_me")
+    assert assigned == 77
+
+    rows = client.execute_raw(
+        "MATCH (a:Application {id: $id}) RETURN a.cluster_id AS cluster_id",
+        {"id": "assign_me"},
+    )
+    assert rows[0]["cluster_id"] == 77
+
 def test_generator_memory(client: FraudGraphClient):
     # create star graph with 1000 linked nodes
     client.add_application(
